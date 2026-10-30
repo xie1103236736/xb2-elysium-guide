@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { Swords, Sparkles, Package, BookOpen, Leaf } from "lucide-react";
-import MonstersPage from "./MonstersPage";
-import BladesPage from "./BladesPage";
-import CollectiblesPage from "./CollectiblesPage";
-import CollectPage from "./CollectPage";
+
+// 各 Tab 页懒加载：首屏只下载当前页代码，其余按需拉取
+const MonstersPage = lazy(() => import("./MonstersPage"));
+const BladesPage = lazy(() => import("./BladesPage"));
+const CollectiblesPage = lazy(() => import("./CollectiblesPage"));
+const CollectPage = lazy(() => import("./CollectPage"));
 
 const tabs = [
   { id: "monsters", label: "查怪物", icon: Swords, color: "text-red-600", activeColor: "border-red-600 text-red-600" },
@@ -68,6 +70,13 @@ const Index = () => {
 
         {/* 页面内容 */}
         <div className="flex-1 overflow-hidden flex flex-col" style={{ minHeight: 0 }}>
+          <Suspense
+            fallback={
+              <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">
+                加载中…
+              </div>
+            }
+          >
           {activeTab === "monsters" && <MonstersPage />}
           {activeTab === "blades" && (
             <BladesPage
@@ -89,6 +98,7 @@ const Index = () => {
               }}
             />
           )}
+          </Suspense>
         </div>
       </div>
     </div>

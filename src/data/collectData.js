@@ -1,4 +1,18 @@
-import rawCollectData from "./xb2_collect_data.json";
+// 大体积采集点数据不再打进 JS 包，改为运行时按需加载（public/data/xb2_collect_data.json）
+// 首屏 JS 体积从 ~6MB 降至 ~100KB 级，采集数据仅在进入「查采集」页后下载并缓存
+let collectDataPromise = null;
+
+export const loadCollectData = () => {
+  if (!collectDataPromise) {
+    collectDataPromise = fetch(import.meta.env.BASE_URL + "data/xb2_collect_data.json").then(
+      (r) => {
+        if (!r.ok) throw new Error(`采集数据加载失败 (${r.status})`);
+        return r.json();
+      }
+    );
+  }
+  return collectDataPromise;
+};
 
 export const COLLECT_REGIONS = [
   "阿伐利缇亚商会",
@@ -25,14 +39,6 @@ export const SKILL_TO_BLADES = {
   昆虫学: ["伊吹", "花巴斯塔", "斩铁"],
 };
 
-// 静态采集点数据，从 xb2_collect_data.json 加载，格式: { region, skillName, skillLevel, items }
-export const COLLECT_DATA = rawCollectData;
-
-export const searchItems = (keyword) =>
-  COLLECT_DATA.filter((p) => p.items.some((i) => i.includes(keyword)));
-
-export const getPointsByRegion = (region) =>
-  COLLECT_DATA.filter((p) => p.region === region);
 
 // 采集点索引 -> 地图文件名片段数组
 // 图片完整URL: https://xenoblade2.cn/特殊:重定向/file/Colle_{fragment}-map.jpg

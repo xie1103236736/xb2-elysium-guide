@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, MapPin, Leaf, ChevronDown, ChevronUp, User, Map } from "lucide-react";
-import { COLLECT_REGIONS, SKILL_TO_BLADES, COLLECT_DATA, searchItems, getPointsByRegion, getMapImageUrls } from "@/data/collectData";
+import { COLLECT_REGIONS, SKILL_TO_BLADES, loadCollectData, getMapImageUrls } from "@/data/collectData";
 
 const skillColors = {
   农学:   { bg: "bg-lime-100",    text: "text-lime-700",    border: "border-lime-300" },
@@ -136,13 +136,28 @@ const CollectPage = ({ onBladeClick }) => {
   const [searchedKeyword, setSearchedKeyword] = useState(""); // 已提交的搜索词
   const [selectedRegion, setSelectedRegion] = useState(null);
 
-  // 计算最终展示数据
+  // 采集点数据体积大（~5MB），按需异步加载，不随首屏 JS 下载
+  const [allPoints, setAllPoints] = useState(null);
+  const [dataError, setDataError] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    loadCollectData()
+      .then((d) => { if (alive) setAllPoints(d); })
+      .catch((e) => { if (alive) setDataError(String((e && e.message) || e)); });
+    return () => { alive = false; };
+  }, []);
+
+  // 计算最终展示数据（在已加载的数据内本地过滤）
   const finalPoints = (() => {
+    const pts = allPoints || [];
     if (!searchedKeyword && !selectedRegion) return [];
-    if (!searchedKeyword && selectedRegion) return getPointsByRegion(selectedRegion);
-    if (searchedKeyword && !selectedRegion) return searchItems(searchedKeyword);
+    if (!searchedKeyword && selectedRegion) return pts.filter((p) => p.region === selectedRegion);
+    if (searchedKeyword && !selectedRegion)
+      return pts.filter((p) => p.items.some((i) => i.includes(searchedKeyword)));
     // 有搜索词且有地区：在搜索结果内再按地区筛选
-    return searchItems(searchedKeyword).filter((p) => p.region === selectedRegion);
+    return pts.filter(
+      (p) => p.items.some((i) => i.includes(searchedKeyword)) && p.region === selectedRegion
+    );
   })();
 
   const idle = !searchedKeyword && !selectedRegion;
@@ -223,7 +238,17 @@ const CollectPage = ({ onBladeClick }) => {
             选择地区或搜索物品名称
           </div>
         )}
-        {!idle && finalPoints.length === 0 && (
+        {dataError && (
+          <div className="text-center py-12 text-red-500 text-sm">
+            采集数据加载失败：{dataError}，请刷新重试
+          </div>
+        )}
+        {!idle && !dataError && allPoints === null && (
+          <div className="text-center py-12 text-slate-400 text-sm">
+            采集数据加载中，请稍候…
+          </div>
+        )}
+        {!idle && allPoints !== null && finalPoints.length === 0 && (
           <div className="text-center py-12 text-slate-400 text-sm">
             没有找到匹配的采集点
           </div>
